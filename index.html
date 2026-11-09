@@ -9,9 +9,11 @@
 <header class="hero"><div class="top"><div><p class="eyebrow">SUBSCRIPTIONS</p><h1>订阅看板</h1></div>
 <button id="theme" class="icon" aria-label="切换主题">◐</button></div>
 <div class="stats"><div class="stat"><span>每月总花费</span><b id="total">¥0</b></div>
+<div class="stat"><span>本月单笔</span><b id="oneoffMonth">¥0</b></div>
 <div class="stat"><span>订阅数</span><b id="count">0</b></div>
 <div class="stat warn"><span>需关注</span><b id="soon">0</b></div></div></header>
 <section id="upcoming" class="upcoming"></section>
+<section id="oneoffs" class="oneoffs"></section>
 <nav id="filters" class="chips"></nav>
 <main id="list"></main>
 <div class="actions"><button id="add" class="primary">＋ 添加订阅</button>
@@ -19,7 +21,7 @@
 <button id="reset" class="ghost">恢复示例</button>
 <button id="enableNotif">开启通知</button>
 <button id="testNotif">测试通知</button></div>
-<p class="hint">添加真实订阅：点「＋ 添加订阅」，填写服务名称、分类、月费、续费日期和支付方式，再点保存。点已有卡片可改或删。也可以导出 / 导入 JSON。<br>续费提醒：点「开启通知」允许系统通知，再点「测试通知」看能不能弹出。打开看板时，会检查真实订阅（不含示例）是否在 3 天或 1 天后到期。每天上午我也会再查一次，有到期的会在聊天里告诉你，并尽量写入 iPhone 提醒事项。把真实订阅告诉我，或把导出的 JSON 发给我，手机提醒才会跟上。<br>📱 iPhone：用 Safari 打开 → 点底部「分享」→「添加到主屏幕」。数据只存在这台设备的浏览器里。</p>
+<p class="hint">订阅数据来自服务器上的 live.json；单笔支出（KYC、礼品卡充值等）单独记在「单笔支出」板块，不计入「每月总花费」。改数据跟我说即可。<br>添加真实订阅：点「＋ 添加订阅」，填写服务名称、分类、月费、续费日期和支付方式，再点保存。点已有卡片可改或删。也可以导出 / 导入 JSON。<br>续费提醒：点「开启通知」允许系统通知，再点「测试通知」看能不能弹出。打开看板时，会检查真实订阅（不含示例）是否在 3 天或 1 天后到期。<br>📱 iPhone：用 Safari 打开 → 点底部「分享」→「添加到主屏幕」。</p>
 </div>
 <dialog id="dlg"><form id="form" method="dialog"><h2 id="dlgTitle">添加订阅</h2>
 <label>服务名称<input name="name" required></label>
@@ -29,4 +31,4 @@
 <label>支付方式<input name="payment" list="pm" required><datalist id="pm"><option>支付宝</option><option>微信支付</option><option>苹果订阅</option><option>信用卡</option></datalist></label>
 <div class="row"><button type="button" id="del" class="danger">删除</button><span></span><button value="cancel" formnovalidate>取消</button><button id="save" class="primary" value="ok">保存</button></div>
 </form></dialog>
-<script src="app.js?v=9"></script></body></html>
+<script src="app.js?v=10"></script></body></html>

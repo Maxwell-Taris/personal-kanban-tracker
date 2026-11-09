@@ -1,4 +1,4 @@
-const K='subs',$=s=>document.querySelector(s);let subs=[],filter='全部',editing=null;
+const K='subs',$=s=>document.querySelector(s);let subs=[],oneoffs=[],filter='全部',editing=null;
 const day=864e5,CATS=['AI','视频会员','云存储','工具/其他'];
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 const rel=v=>{if(/^[+-]\d+$/.test(v)){const d=new Date(today().getTime()+(+v)*day);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}return v};
@@ -7,12 +7,22 @@ const save=()=>localStorage.setItem(K,JSON.stringify(subs));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ym=d=>d.getFullYear()+'年'+(d.getMonth()+1)+'月';
 const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())};
+const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=8',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=9',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
+ }catch(e){}
+ return false
+}
+async function loadOneoffs(){
+ try{
+  const res=await fetch('data/oneoffs.json?v=1',{cache:'no-store',credentials:'same-origin'});
+  if(!res.ok) throw new Error('http '+res.status);
+  const data=await res.json();
+  if(Array.isArray(data)){oneoffs=data;return true}
  }catch(e){}
  return false
 }
@@ -32,15 +42,33 @@ async function seed(){
  if(!r.ok) throw new Error('http '+r.status);
  subs=(await r.json()).map(s=>({...s,renew:rel(s.renew)}));save()
 }
+function monthKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function oneoffMonthTotal(ref){
+ const y=ref.getFullYear(),m=ref.getMonth();
+ return oneoffs.reduce((a,o)=>{
+  const d=parseDay(o.date);if(!d)return a;
+  return (d.getFullYear()===y&&d.getMonth()===m)?a+(+o.amount||0):a;
+ },0);
+}
+function oneoffYearTotal(ref){
+ const y=ref.getFullYear();
+ return oneoffs.reduce((a,o)=>{
+  const d=parseDay(o.date);if(!d)return a;
+  return d.getFullYear()===y?a+(+o.amount||0):a;
+ },0);
+}
 function render(){ hideCalPop();
  const cats=['全部',...new Set([...CATS,...subs.map(s=>s.category)])];
  $('#filters').innerHTML=cats.map(c=>`<button class="${c===filter?'on':''}" data-c="${c}">${c}</button>`).join('');
  const extra=[...new Set([...CATS,...subs.map(s=>s.category)])];
  $('#cats').innerHTML=extra.map(c=>`<option>${esc(c)}</option>`).join('');
  $('#total').textContent='¥'+subs.reduce((a,s)=>a+ +s.price,0).toFixed(0);
+ const om=$('#oneoffMonth');
+ if(om) om.textContent='¥'+oneoffMonthTotal(today()).toFixed(0);
  $('#count').textContent=subs.length;
  $('#soon').textContent=subs.filter(s=>left(s)<=7).length;
  renderUpcoming();
+ renderOneoffs();
  const shown=subs.filter(s=>filter==='全部'||s.category===filter),groups={};
  shown.sort((a,b)=>left(a)-left(b)).forEach(s=>(groups[s.category]??=[]).push(s));
  $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.reduce((a,s)=>a+ +s.price,0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
@@ -76,6 +104,40 @@ function renderUpcoming(){
  }).join(''):'<p class="up-empty">未来 30 天没有续费。</p>';
  const upHtml=`<div class="uh"><span>未来 30 天续费</span><b>${items.length} 笔 · ¥${sum.toFixed(0)}</b></div><div class="cals">${months}</div><div class="up-list">${list}</div>`;
  $('#upcoming').innerHTML=upHtml;bindCalDays();
+}
+function renderOneoffs(){
+ const el=$('#oneoffs');
+ if(!el) return;
+ const now=today();
+ const mTotal=oneoffMonthTotal(now);
+ const yTotal=oneoffYearTotal(now);
+ const sorted=[...oneoffs].filter(o=>parseDay(o.date)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ if(!sorted.length){
+  el.innerHTML=`<div class="oh"><span>单笔支出</span><b>暂无记录</b></div><p class="oo-empty">KYC、礼品卡充值等一次性开销会出现在这里，不计入每月订阅总花费。</p>`;
+  return;
+ }
+ const groups={};
+ sorted.forEach(o=>{
+  const d=parseDay(o.date);
+  const key=monthKey(d);
+  (groups[key]??=[]).push(o);
+ });
+ const blocks=Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(key=>{
+  const arr=groups[key];
+  const [yy,mm]=key.split('-').map(Number);
+  const sum=arr.reduce((a,o)=>a+(+o.amount||0),0);
+  const items=arr.map(o=>{
+   const note=o.notes?esc(o.notes):'一次性支出';
+   const cat=o.category?esc(o.category):'其他';
+   return `<div class="oo-item" data-oo="${esc(o.id||'')}">
+     <div class="l"><span class="n">${esc(o.name)}<span class="badge b-oo">单笔</span></span>
+     <span class="w">${esc(o.date)} · ${cat}<br>${note}</span></div>
+     <div class="amt">¥${(+o.amount||0).toFixed(0)}</div>
+   </div>`;
+  }).join('');
+  return `<div class="month-block"><div class="mh"><span>${yy}年${mm}月</span><b>${arr.length} 笔 · ¥${sum.toFixed(0)}</b></div>${items}</div>`;
+ }).join('');
+ el.innerHTML=`<div class="oh"><span>单笔支出</span><b>本月 ¥${mTotal.toFixed(0)} · 本年 ¥${yTotal.toFixed(0)} · 共 ${sorted.length} 笔</b></div>${blocks}`;
 }
 function open(s){editing=s;const f=$('#form');f.reset();$('#dlgTitle').textContent=s?'编辑订阅':'添加订阅';$('#del').style.display=s?'':'none';
  if(s)['name','category','price','renew','payment'].forEach(k=>f[k].value=s[k]);$('#dlg').showModal()}
@@ -135,7 +197,7 @@ $('#dlg').addEventListener('close',()=>{if($('#dlg').returnValue!=='ok')return;c
 $('#del').onclick=()=>{if(confirm('删除这条订阅？')){subs=subs.filter(s=>s!==editing);save();render();$('#dlg').close()}};
 $('#export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(subs,null,2)],{type:'application/json'}));a.download='subscriptions.json';a.click()};
 $('#import').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;subs=d.map((s,i)=>({id:s.id||'i'+i+Date.now(),...s,renew:rel(s.renew)}));save();render()}catch{alert('JSON 格式不对')}};
-$('#reset').onclick=async()=>{if(confirm('清空当前数据并恢复示例？')){await seed();render()}};
+$('#reset').onclick=async()=>{if(confirm('清空当前数据并恢复示例？')){await seed();await loadOneoffs();render()}};
 
 function realSubs(){return subs.filter(s=>!s.example)}
 function canNotify(){return typeof Notification!=='undefined'}
@@ -168,7 +230,7 @@ if(tn) tn.onclick=async()=>{if(!(await askNotify()))return;showNote('订阅看�
 
 $('#theme').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;localStorage.setItem('theme',t);document.querySelector('meta[name=theme-color]').content=t==='dark'?'#0b1020':'#f4f5fb'};
 (async()=>{
- const ok=await loadLive();
+ const [ok]=await Promise.all([loadLive(),loadOneoffs()]);
  if(!ok){
   const raw=localStorage.getItem(K);
   if(raw){try{subs=JSON.parse(raw)}catch{subs=[]}}

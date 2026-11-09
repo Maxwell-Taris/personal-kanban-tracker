@@ -1,0 +1,11 @@
+[
+  {
+    "id": "claude-kyc-2026-11-09",
+    "name": "Claude KYC",
+    "category": "认证/手续费",
+    "amount": 280,
+    "date": "2026-11-09",
+    "currency": "CNY",
+    "notes": "一次性 KYC 费用，非月订阅"
+  }
+]

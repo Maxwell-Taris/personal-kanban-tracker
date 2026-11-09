@@ -1,0 +1,12 @@
+[
+  {
+    "id": "example-oneoff",
+    "name": "示例单笔支出",
+    "category": "其他",
+    "amount": 100,
+    "date": "2026-01-15",
+    "currency": "CNY",
+    "notes": "示例：礼品卡充值、认证费等一次性开销",
+    "example": true
+  }
+]
