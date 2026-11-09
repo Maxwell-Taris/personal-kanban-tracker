@@ -10,7 +10,7 @@ const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(
 const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=9',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=11',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
@@ -19,7 +19,7 @@ async function loadLive(){
 }
 async function loadOneoffs(){
  try{
-  const res=await fetch('data/oneoffs.json?v=1',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/oneoffs.json?v=2',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const data=await res.json();
   if(Array.isArray(data)){oneoffs=data;return true}
@@ -69,6 +69,7 @@ function render(){ hideCalPop();
  $('#soon').textContent=subs.filter(s=>left(s)<=7).length;
  renderUpcoming();
  renderOneoffs();
+ renderTrend();
  const shown=subs.filter(s=>filter==='全部'||s.category===filter),groups={};
  shown.sort((a,b)=>left(a)-left(b)).forEach(s=>(groups[s.category]??=[]).push(s));
  $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.reduce((a,s)=>a+ +s.price,0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
@@ -198,6 +199,108 @@ $('#del').onclick=()=>{if(confirm('删除这条订阅？')){subs=subs.filter(s=>
 $('#export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(subs,null,2)],{type:'application/json'}));a.download='subscriptions.json';a.click()};
 $('#import').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;subs=d.map((s,i)=>({id:s.id||'i'+i+Date.now(),...s,renew:rel(s.renew)}));save();render()}catch{alert('JSON 格式不对')}};
 $('#reset').onclick=async()=>{if(confirm('清空当前数据并恢复示例？')){await seed();await loadOneoffs();render()}};
+
+
+function addMonths(d,n){const x=new Date(d.getFullYear(),d.getMonth()+n,1);return x}
+function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1)}
+function monthLabel(key){const [y,m]=key.split('-').map(Number);return y+'年'+m+'月'}
+/** Monthly recurring: price each calendar month. Yearly: annualPrice only in renew month. No double-count of QQ monthly equivalent. */
+function subChargeInMonth(s, key){
+  if(s.example) return 0;
+  if(s.recurring==='yearly'){
+    const d=parseDay(s.renew);if(!d) return 0;
+    return monthKey(d)===key?(+s.annualPrice||0):0;
+  }
+  return +s.price||0;
+}
+function earliestTrendStart(){
+  const now=monthStart(today());
+  let start=now;
+  oneoffs.forEach(o=>{const d=parseDay(o.date);if(d){const m=monthStart(d);if(m<start)start=m}});
+  subs.forEach(s=>{
+    if(s.example)return;
+    if(s.recurring==='yearly'){
+      const d=parseDay(s.renew);if(!d)return;
+      const m=monthStart(d);if(m<=now&&m<start)start=m;
+    }
+  });
+  return start;
+}
+function buildSpendSeries(){
+  const now=monthStart(today());
+  let start=earliestTrendStart();
+  const minStart=addMonths(now,-23);
+  if(start<minStart) start=minStart;
+  const months=[];
+  for(let cur=new Date(start);cur<=now;cur=addMonths(cur,1)){
+    const key=monthKey(cur);
+    let subTotal=0;
+    subs.forEach(s=>{subTotal+=subChargeInMonth(s,key)});
+    const ooTotal=oneoffs.reduce((a,o)=>{
+      const d=parseDay(o.date);if(!d)return a;
+      return monthKey(d)===key?a+(+o.amount||0):a;
+    },0);
+    const total=subTotal+ooTotal;
+    months.push({key,label:monthLabel(key),subTotal,ooTotal,total});
+  }
+  let cum=0;
+  months.forEach(m=>{cum+=m.total;m.cumulative=cum});
+  return months;
+}
+function renderTrend(){
+  const el=$('#trend');
+  if(!el) return;
+  const series=buildSpendSeries();
+  if(!series.length){
+    el.innerHTML=`<div class="th"><span>花费趋势</span><b>暂无数据</b></div><p class="empty">有订阅或单笔支出后，这里会显示每月花费与累计。</p>`;
+    return;
+  }
+  const grand=series[series.length-1].cumulative;
+  const avg=grand/series.length;
+  const maxBar=Math.max(...series.map(m=>m.total),1);
+  const maxCum=Math.max(...series.map(m=>m.cumulative),1);
+  const W=640,H=220,padL=44,padR=48,padT=18,padB=36;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const n=series.length;
+  const gap=Math.min(18, plotW/(n*3));
+  const barW=Math.max(12, (plotW-gap*(n+1))/n);
+  const yBar=v=>padT+plotH-(v/maxBar)*plotH;
+  const yCum=v=>padT+plotH-(v/maxCum)*plotH;
+  const xAt=i=>padL+gap+i*(barW+gap)+barW/2;
+  const gridVals=[0,0.5,1].map(t=>maxBar*t);
+  const grid=gridVals.map(v=>{
+    const y=yBar(v);
+    return `<line class="grid-line" x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}"/><text class="ylab" x="${padL-6}" y="${y+3}" text-anchor="end">¥${Math.round(v)}</text>`;
+  }).join('');
+  const bars=series.map((m,i)=>{
+    const x=padL+gap+i*(barW+gap);
+    const y=yBar(m.total);
+    const h=Math.max(2, padT+plotH-y);
+    const short=String(m.key).slice(5).replace(/^0/,'')+'月';
+    const val=m.total>0?`<text class="val" x="${x+barW/2}" y="${y-4}" text-anchor="middle">¥${Math.round(m.total)}</text>`:'';
+    return `<rect class="bar" x="${x}" y="${y}" width="${barW}" height="${h}" rx="6"><title>${esc(m.label)}：订阅 ¥${m.subTotal.toFixed(0)} + 单笔 ¥${m.ooTotal.toFixed(0)} = ¥${m.total.toFixed(0)}；累计 ¥${m.cumulative.toFixed(0)}</title></rect>${val}<text class="tick" x="${x+barW/2}" y="${H-14}" text-anchor="middle">${esc(n>6?short:m.label)}</text>`;
+  }).join('');
+  const pts=series.map((m,i)=>`${xAt(i)},${yCum(m.cumulative)}`).join(' ');
+  const dots=series.map((m,i)=>`<circle class="cum-dot" cx="${xAt(i)}" cy="${yCum(m.cumulative)}" r="4"><title>累计 ${esc(m.label)}：¥${m.cumulative.toFixed(0)}</title></circle>`).join('');
+  const rightLab=`<text class="ylab" x="${W-padR+6}" y="${yCum(maxCum)+3}" text-anchor="start">累计</text><text class="ylab" x="${W-padR+6}" y="${yCum(0)+3}" text-anchor="start">¥0</text>`;
+  const list=series.slice().reverse().map(m=>`<div class="tm-item"><div class="l"><span class="n">${esc(m.label)}</span><span class="w">订阅 ¥${m.subTotal.toFixed(0)} · 单笔 ¥${m.ooTotal.toFixed(0)}</span></div><div class="r"><div class="amt">¥${m.total.toFixed(0)}</div><div class="cum">累计 ¥${m.cumulative.toFixed(0)}</div></div></div>`).join('');
+  el.innerHTML=`<div class="th"><span>花费趋势</span><b>累计 ¥${grand.toFixed(0)} · 月均 ¥${avg.toFixed(0)} · ${series.length} 个月</b></div>
+  <p class="tcaption">规则：月付订阅每月计入当期月费；年付（如 QQ 绿钻）只在续费月计入年费，不按月摊；单笔按发生日所在月。柱为当月合计，粉线为累计。</p>
+  <div class="legend"><span><i class="bar-swatch"></i>当月花费</span><span><i class="line-swatch"></i>累计花费</span></div>
+  <svg class="trend-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每月花费柱状图与累计曲线">
+    <defs>
+      <linearGradient id="trendBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#6366f1"/></linearGradient>
+      <linearGradient id="trendBarGradDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient>
+    </defs>
+    ${grid}
+    <line class="axis" x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}"/>
+    ${bars}
+    <polyline class="cum-line" points="${pts}"/>
+    ${dots}
+    ${rightLab}
+  </svg>
+  <div class="month-list">${list}</div>`;
+}
 
 function realSubs(){return subs.filter(s=>!s.example)}
 function canNotify(){return typeof Notification!=='undefined'}
