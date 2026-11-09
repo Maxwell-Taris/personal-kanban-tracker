@@ -16,7 +16,7 @@
     "id": "grok-bot",
     "name": "Grok Bot",
     "category": "AI",
-    "price": 0,
+    "price": 15,
     "renew": "2026-12-05",
     "payment": "首月 15 美元，第二个月起 30 美元；首月后是否续费还在考虑",
     "dayOfMonth": 5,

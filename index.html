@@ -4,14 +4,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="订阅看板">
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="styles.css"><script>document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'</script></head>
+<link rel="stylesheet" href="styles.css?v=12"><script>document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'</script></head>
 <body><div class="wrap">
 <header class="hero"><div class="top"><div><p class="eyebrow">SUBSCRIPTIONS</p><h1>订阅看板</h1></div>
 <button id="theme" class="icon" aria-label="切换主题">◐</button></div>
 <div class="stats"><div class="stat"><span>每月总花费</span><b id="total">¥0</b></div>
 <div class="stat"><span>本月单笔</span><b id="oneoffMonth">¥0</b></div>
 <div class="stat"><span>订阅数</span><b id="count">0</b></div>
-<div class="stat warn"><span>需关注</span><b id="soon">0</b></div></div></header>
+<div class="stat warn tappable" role="button" tabindex="0" aria-label="查看需关注"><span>需关注</span><b id="soon">0</b></div></div></header>
 <section id="upcoming" class="upcoming"></section>
 <section id="oneoffs" class="oneoffs"></section>
 <section id="trend" class="trend"></section>
@@ -32,4 +32,4 @@
 <label>支付方式<input name="payment" list="pm" required><datalist id="pm"><option>支付宝</option><option>微信支付</option><option>苹果订阅</option><option>信用卡</option></datalist></label>
 <div class="row"><button type="button" id="del" class="danger">删除</button><span></span><button value="cancel" formnovalidate>取消</button><button id="save" class="primary" value="ok">保存</button></div>
 </form></dialog>
-<script src="app.js?v=11"></script></body></html>
+<script src="app.js?v=12"></script></body></html>

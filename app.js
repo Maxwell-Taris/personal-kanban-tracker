@@ -5,12 +5,52 @@ const rel=v=>{if(/^[+-]\d+$/.test(v)){const d=new Date(today().getTime()+(+v)*da
 const left=s=>Math.round((new Date(s.renew+'T00:00:00')-today())/day);
 const save=()=>localStorage.setItem(K,JSON.stringify(subs));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function currencySym(s){const c=String(s.currency||'CNY').toUpperCase();return c==='USD'||c==='$'?'$':'¥'}
+function moneyCard(s){
+ if(s.priceNote) return esc(s.priceNote);
+ const sym=currencySym(s);
+ if(s.recurring==='yearly') return sym+(+s.annualPrice)+'<small>/年</small>';
+ return sym+(+s.price)+'<small>/月</small>';
+}
+function moneyShort(s){
+ if(s.recurring==='yearly') return currencySym(s)+(+s.annualPrice)+'/年';
+ if(s.priceNote && String(s.currency||'').toUpperCase()==='USD') return '$'+(+s.price);
+ return currencySym(s)+(+s.price);
+}
+function attentionItems(){return subs.filter(s=>left(s)<=7).sort((a,b)=>left(a)-left(b))}
+function attentionWhy(s){const d=left(s);return d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后到期 · ${s.renew}`}
+function hideSoonPop(){const p=$('#soonPop');if(p)p.remove()}
+function showSoonPop(anchor){
+ hideSoonPop();hideCalPop();
+ const items=attentionItems();
+ const pop=document.createElement('div');
+ pop.id='soonPop';pop.className='soon-pop';pop.setAttribute('role','dialog');
+ if(!items.length){
+  pop.innerHTML='<p class="soon-empty">暂无需要关注的事项</p>';
+ }else{
+  pop.innerHTML='<p class="soon-title">需关注 · '+items.length+' 项</p>'+items.map(s=>
+   '<button type="button" class="soon-hit" data-id="'+esc(s.id)+'"><span class="n">'+esc(s.name)+'</span><span class="d">'+esc(attentionWhy(s))+(s.payment?' · '+esc(s.payment):'')+'</span></button>'
+  ).join('');
+ }
+ document.body.appendChild(pop);
+ const el=anchor||document.querySelector('.stat.warn');
+ const r=el.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
+ let left=r.left+r.width/2-pw/2;
+ left=Math.max(8,Math.min(left,innerWidth-pw-8));
+ let top=r.bottom+8;
+ if(top+ph>innerHeight-8) top=Math.max(8,r.top-ph-8);
+ pop.style.left=left+'px';pop.style.top=top+'px';
+ pop.querySelectorAll('.soon-hit').forEach(btn=>{
+  btn.addEventListener('click',ev=>{ev.stopPropagation();const s=subs.find(x=>x.id===btn.dataset.id);hideSoonPop();if(s)open(s)});
+ });
+}
 const ym=d=>d.getFullYear()+'年'+(d.getMonth()+1)+'月';
 const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())};
 const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=11',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=12',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
@@ -66,7 +106,9 @@ function render(){ hideCalPop();
  const om=$('#oneoffMonth');
  if(om) om.textContent='¥'+oneoffMonthTotal(today()).toFixed(0);
  $('#count').textContent=subs.length;
- $('#soon').textContent=subs.filter(s=>left(s)<=7).length;
+ const soonN=subs.filter(s=>left(s)<=7).length;$('#soon').textContent=soonN;
+ const soonEl=document.querySelector('.stat.warn');
+ if(soonEl){soonEl.classList.add('tappable');soonEl.setAttribute('role','button');soonEl.setAttribute('tabindex','0');soonEl.setAttribute('aria-label',soonN?'查看需关注的 '+soonN+' 项':'查看需关注（暂无）');}
  renderUpcoming();
  renderOneoffs();
  renderTrend();
@@ -75,7 +117,7 @@ function render(){ hideCalPop();
  $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.reduce((a,s)=>a+ +s.price,0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
 }
 function card(s){const d=left(s),a=d<=7;const b=d<0?'<span class="badge b-red">已过期</span>':a?'<span class="badge b-red">即将到期</span>':'';
- return `<div class="card ${a?'alert':''}" data-id="${s.id}"><div class="ch"><div class="name">${esc(s.name)}${b}${s.example?'<span class="badge b-ex">示例</span>':''}</div><div class="price">${s.recurring==='yearly'?'¥'+(+s.annualPrice)+'<small>/年</small>':'¥'+(+s.price)+'<small>/月</small>'}</div></div>
+ return `<div class="card ${a?'alert':''}" data-id="${s.id}"><div class="ch"><div class="name">${esc(s.name)}${b}${s.example?'<span class="badge b-ex">示例</span>':''}</div><div class="price">${moneyCard(s)}</div></div>
  <div class="meta"><span class="due">${d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后 · ${s.renew}`}</span><span>${esc(s.payment)}</span></div></div>`}
 function drawMonth(y,m,start,end,byDay){
  const first=new Date(y,m,1), last=new Date(y,m+1,0);
@@ -101,7 +143,7 @@ function renderUpcoming(){
  const list=items.length?items.map(s=>{
   const d=left(s), a=d<=7;
   const when=d===0?'今天到期':`${d} 天后 · ${s.renew}`;
-  return `<div class="up-item ${a?'alert':''}" data-id="${s.id}"><div class="l"><span class="n">${esc(s.name)}</span><span class="w">${when} · ${esc(s.payment)}</span></div><b>${s.recurring==='yearly'?'¥'+(+s.annualPrice)+'/年':'¥'+(+s.price)}</b></div>`;
+  return `<div class="up-item ${a?'alert':''}" data-id="${s.id}"><div class="l"><span class="n">${esc(s.name)}</span><span class="w">${when} · ${esc(s.payment)}</span></div><b>${moneyShort(s)}</b></div>`;
  }).join(''):'<p class="up-empty">未来 30 天没有续费。</p>';
  const upHtml=`<div class="uh"><span>未来 30 天续费</span><b>${items.length} 笔 · ¥${sum.toFixed(0)}</b></div><div class="cals">${months}</div><div class="up-list">${list}</div>`;
  $('#upcoming').innerHTML=upHtml;bindCalDays();
@@ -143,6 +185,22 @@ function renderOneoffs(){
 function open(s){editing=s;const f=$('#form');f.reset();$('#dlgTitle').textContent=s?'编辑订阅':'添加订阅';$('#del').style.display=s?'':'none';
  if(s)['name','category','price','renew','payment'].forEach(k=>f[k].value=s[k]);$('#dlg').showModal()}
 $('#filters').onclick=e=>{if(e.target.dataset.c){filter=e.target.dataset.c;render()}};
+
+(function bindSoonStat(){
+ const el=document.querySelector('.stat.warn');
+ if(!el||el.dataset.bound)return;el.dataset.bound='1';
+ const open=ev=>{ev.preventDefault();ev.stopPropagation();showSoonPop(el)};
+ el.addEventListener('click',open);
+ el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){open(e)}});
+})();
+document.addEventListener('click',e=>{
+ if(e.target.closest('#soonPop')) return;
+ if(e.target.closest('.stat.warn')) return;
+ hideSoonPop();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideSoonPop()});
+window.addEventListener('resize',hideSoonPop);
+
 $('#list').onclick=e=>{const c=e.target.closest('.card');if(c)open(subs.find(s=>s.id===c.dataset.id))};
 function priceText(s){
  if(s.priceNote) return s.priceNote;
@@ -153,7 +211,7 @@ function hideCalPop(){const p=$('#calPop');if(p)p.remove()}
 function showCalPop(el){
  const key=el.dataset.day;if(!key)return;
  const hits=subs.filter(s=>s.renew===key);if(!hits.length)return;
- hideCalPop();
+ hideCalPop();hideSoonPop();
  const pop=document.createElement('div');
  pop.id='calPop';pop.className='cal-pop';pop.setAttribute('role','dialog');
  pop.innerHTML='<p>'+esc(key)+' 的续费</p>'+hits.map(s=>'<div class="cal-hit"><div class="n">'+esc(s.name)+'</div><div class="d">'+esc(priceText(s))+' · 续费日 '+esc(s.renew)+'</div></div>').join('');

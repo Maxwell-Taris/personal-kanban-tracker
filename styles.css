@@ -101,3 +101,17 @@ form label{display:block;font-size:13px;color:var(--mut);margin:10px 0}form inpu
 .trend .tm-item .cum{font-size:12px;color:var(--mut);margin-top:2px}
 .trend .empty{color:var(--mut);font-size:13px;margin:4px 0 8px}
 [data-theme=dark] .trend-chart .bar{fill:url(#trendBarGradDark)}
+
+
+/* 需关注可点 + 弹窗 */
+.stat.warn.tappable,.stat.warn{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;transition:background .15s,transform .1s}
+.stat.warn:hover{background:rgba(255,255,255,.22)}
+.stat.warn:active{transform:scale(.98);background:rgba(255,255,255,.28)}
+.soon-pop{position:fixed;z-index:45;min-width:220px;max-width:min(320px,calc(100vw - 24px));background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:0 16px 36px -16px rgba(21,26,45,.45)}
+.soon-pop .soon-title{margin:0 0 10px;font-size:12px;color:var(--mut);letter-spacing:.04em}
+.soon-pop .soon-empty{margin:0;font-size:14px;color:var(--mut);line-height:1.5;padding:4px 0}
+.soon-pop .soon-hit{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;margin:0 0 8px;padding:10px 10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--tx);font:inherit;text-align:left;cursor:pointer}
+.soon-pop .soon-hit:last-child{margin-bottom:0}
+.soon-pop .soon-hit:hover{border-color:var(--red);background:var(--redbg)}
+.soon-pop .soon-hit .n{font-weight:650;font-size:15px}
+.soon-pop .soon-hit .d{font-size:12px;color:var(--red);font-weight:600;line-height:1.45}
