@@ -1,0 +1,8 @@
+[
+{"id":"ex1","name":"ChatGPT Plus","category":"AI","price":99,"renew":"+3","payment":"苹果订阅","example":true},
+{"id":"ex2","name":"Netflix","category":"视频会员","price":43,"renew":"+18","payment":"支付宝","example":true},
+{"id":"ex3","name":"iCloud+ 200GB","category":"云存储","price":21,"renew":"+25","payment":"苹果订阅","example":true},
+{"id":"ex4","name":"Notion Plus","category":"工具/其他","price":80,"renew":"-2","payment":"信用卡","example":true},
+{"id":"ex5","name":"YouTube Premium","category":"视频会员","price":68,"renew":"+11","payment":"信用卡","example":true},
+{"id":"ex6","name":"Adobe Creative Cloud","category":"工具/其他","price":168,"renew":"+6","payment":"微信支付","example":true}
+]

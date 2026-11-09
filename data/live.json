@@ -1,0 +1,70 @@
+[
+  {
+    "id": "chatgpt-plus",
+    "name": "ChatGPT Plus",
+    "category": "AI",
+    "price": 80,
+    "renew": "2026-12-03",
+    "payment": "需提前预付：土耳其 Apple ID 礼品卡，提前充好约 500 里拉",
+    "dayOfMonth": 3,
+    "recurring": "monthly",
+    "currency": "CNY",
+    "notes": "大约每月 80 元人民币，走土耳其 Apple ID 礼品卡。须提前预付，例如提前往土耳其 Apple ID 礼品卡里充大约 500 里拉，避免到期才充。",
+    "paymentRule": "prepaid"
+  },
+  {
+    "id": "grok-bot",
+    "name": "Grok Bot",
+    "category": "AI",
+    "price": 0,
+    "renew": "2026-12-05",
+    "payment": "首月 15 美元，第二个月起 30 美元；首月后是否续费还在考虑",
+    "dayOfMonth": 5,
+    "recurring": "monthly",
+    "currency": "USD",
+    "notes": "首月 15 美元，第二个月起 30 美元。还在决定第一个月结束后要不要续。",
+    "priceNote": "首月 $15，之后 $30/月"
+  },
+  {
+    "id": "claude-pro",
+    "name": "Claude Pro",
+    "category": "AI",
+    "price": 185,
+    "renew": "2026-11-09",
+    "payment": "不能预付：到期自动变回免费版，事后再去找对方付款",
+    "dayOfMonth": 9,
+    "recurring": "monthly",
+    "currency": "红品号儿",
+    "notes": "每月 185（红品号儿）。不能提前付：到期后自动切回免费版，再去找那个人重新付款。",
+    "paymentRule": "postpaid"
+  },
+  {
+    "id": "us-residential-ip",
+    "name": "美国住宅 IP",
+    "category": "网络",
+    "price": 25,
+    "renew": "2026-12-08",
+    "payment": "需提前预付：到期前准备好，过期重买会变成另一个美国位置",
+    "dayOfMonth": 8,
+    "recurring": "monthly",
+    "priceNote": "¥25/月",
+    "notes": "每月 25 元人民币。须提前预付、在到期前准备好；如果过期后再买新的，美国位置会变。本次已续到 2026-12-08 11:09。",
+    "paymentRule": "prepaid",
+    "renewTime": "11:09",
+    "currency": "CNY"
+  },
+  {
+    "id": "qq-music-green-diamond",
+    "name": "QQ音乐绿钻",
+    "category": "音乐",
+    "price": 13.1667,
+    "annualPrice": 158,
+    "renew": "2027-07-31",
+    "payment": "支付方式未记录",
+    "dayOfMonth": 31,
+    "recurring": "yearly",
+    "currency": "CNY",
+    "priceNote": "¥158/年（折合约 ¥13.17/月）",
+    "notes": "年付，每年 158 元人民币，下次续费 2027-07-31。仅作记录提醒，不自动续费、不执行付款。"
+  }
+]
