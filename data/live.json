@@ -30,7 +30,7 @@
     "name": "Claude Pro",
     "category": "AI",
     "price": 185,
-    "renew": "2026-11-09",
+    "renew": "2026-12-09",
     "payment": "不能预付：到期自动变回免费版，事后再去找对方付款",
     "dayOfMonth": 9,
     "recurring": "monthly",
