@@ -7,18 +7,23 @@ const save=()=>localStorage.setItem(K,JSON.stringify(subs));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function currencySym(s){const c=String(s.currency||'CNY').toUpperCase();return c==='USD'||c==='$'?'$':'¥'}
+function priceUnknown(s){return s.pricePending===true||(s.price==null&&s.annualPrice==null)}
+function monthlyAmount(s){return priceUnknown(s)?0:(+s.price||0)}
+function pendingLabel(s){return s.priceNote?esc(s.priceNote):'待补'}
 function moneyCard(s){
+ if(priceUnknown(s)) return pendingLabel(s);
  if(s.priceNote) return esc(s.priceNote);
  const sym=currencySym(s);
  if(s.recurring==='yearly') return sym+(+s.annualPrice)+'<small>/年</small>';
  return sym+(+s.price)+'<small>/月</small>';
 }
 function moneyShort(s){
+ if(priceUnknown(s)) return s.priceNote||'待补';
  if(s.recurring==='yearly') return currencySym(s)+(+s.annualPrice)+'/年';
  if(s.priceNote && String(s.currency||'').toUpperCase()==='USD') return '$'+(+s.price);
  return currencySym(s)+(+s.price);
 }
-function attentionItems(){return subs.filter(s=>left(s)<=7).sort((a,b)=>left(a)-left(b))}
+function attentionItems(){return subs.filter(s=>s.remind!==false&&left(s)<=7).sort((a,b)=>left(a)-left(b))}
 function attentionWhy(s){const d=left(s);return d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后到期 · ${s.renew}`}
 function hideSoonPop(){const p=$('#soonPop');if(p)p.remove()}
 function showSoonPop(anchor){
@@ -50,7 +55,7 @@ const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(
 const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=12',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=13',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
@@ -102,11 +107,11 @@ function render(){ hideCalPop();
  $('#filters').innerHTML=cats.map(c=>`<button class="${c===filter?'on':''}" data-c="${c}">${c}</button>`).join('');
  const extra=[...new Set([...CATS,...subs.map(s=>s.category)])];
  $('#cats').innerHTML=extra.map(c=>`<option>${esc(c)}</option>`).join('');
- $('#total').textContent='¥'+subs.reduce((a,s)=>a+ +s.price,0).toFixed(0);
+ $('#total').textContent='¥'+subs.reduce((a,s)=>a+monthlyAmount(s),0).toFixed(0);
  const om=$('#oneoffMonth');
  if(om) om.textContent='¥'+oneoffMonthTotal(today()).toFixed(0);
  $('#count').textContent=subs.length;
- const soonN=subs.filter(s=>left(s)<=7).length;$('#soon').textContent=soonN;
+ const soonN=subs.filter(s=>s.remind!==false&&left(s)<=7).length;$('#soon').textContent=soonN;
  const soonEl=document.querySelector('.stat.warn');
  if(soonEl){soonEl.classList.add('tappable');soonEl.setAttribute('role','button');soonEl.setAttribute('tabindex','0');soonEl.setAttribute('aria-label',soonN?'查看需关注的 '+soonN+' 项':'查看需关注（暂无）');}
  renderUpcoming();
@@ -114,7 +119,7 @@ function render(){ hideCalPop();
  renderTrend();
  const shown=subs.filter(s=>filter==='全部'||s.category===filter),groups={};
  shown.sort((a,b)=>left(a)-left(b)).forEach(s=>(groups[s.category]??=[]).push(s));
- $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.reduce((a,s)=>a+ +s.price,0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
+ $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.reduce((a,s)=>a+monthlyAmount(s),0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
 }
 function card(s){const d=left(s),a=d<=7;const b=d<0?'<span class="badge b-red">已过期</span>':a?'<span class="badge b-red">即将到期</span>':'';
  return `<div class="card ${a?'alert':''}" data-id="${s.id}"><div class="ch"><div class="name">${esc(s.name)}${b}${s.example?'<span class="badge b-ex">示例</span>':''}</div><div class="price">${moneyCard(s)}</div></div>
@@ -137,7 +142,7 @@ function renderUpcoming(){
  const start=today(), end=new Date(start.getTime()+30*day);
  const items=subs.filter(s=>{const d=left(s);return d>=0&&d<=30}).sort((a,b)=>left(a)-left(b));
  const byDay={};items.forEach(s=>(byDay[s.renew]??=[]).push(s));
- const sum=items.reduce((a,s)=>a+ +s.price,0);
+ const sum=items.reduce((a,s)=>a+monthlyAmount(s),0);
  let months='', y=start.getFullYear(), m=start.getMonth();
  while(new Date(y,m,1)<=end){months+=drawMonth(y,m,start,end,byDay);m++;if(m>11){m=0;y++}}
  const list=items.length?items.map(s=>{
@@ -183,7 +188,7 @@ function renderOneoffs(){
  el.innerHTML=`<div class="oh"><span>单笔支出</span><b>本月 ¥${mTotal.toFixed(0)} · 本年 ¥${yTotal.toFixed(0)} · 共 ${sorted.length} 笔</b></div>${blocks}`;
 }
 function open(s){editing=s;const f=$('#form');f.reset();$('#dlgTitle').textContent=s?'编辑订阅':'添加订阅';$('#del').style.display=s?'':'none';
- if(s)['name','category','price','renew','payment'].forEach(k=>f[k].value=s[k]);$('#dlg').showModal()}
+ if(s)['name','category','price','renew','payment'].forEach(k=>f[k].value=s[k]==null?'':s[k]);$('#dlg').showModal()}
 $('#filters').onclick=e=>{if(e.target.dataset.c){filter=e.target.dataset.c;render()}};
 
 (function bindSoonStat(){
@@ -203,6 +208,7 @@ window.addEventListener('resize',hideSoonPop);
 
 $('#list').onclick=e=>{const c=e.target.closest('.card');if(c)open(subs.find(s=>s.id===c.dataset.id))};
 function priceText(s){
+ if(priceUnknown(s)) return s.priceNote||'待补';
  if(s.priceNote) return s.priceNote;
  if(s.priceMin!=null && s.priceMax!=null) return '约 '+s.priceMin+'–'+s.priceMax+' / 月';
  return '¥'+(+s.price)+'/月';
@@ -265,6 +271,7 @@ function monthLabel(key){const [y,m]=key.split('-').map(Number);return y+'年'+m
 /** Monthly recurring: price each calendar month. Yearly: annualPrice only in renew month. No double-count of QQ monthly equivalent. */
 function subChargeInMonth(s, key){
   if(s.example) return 0;
+  if(priceUnknown(s)) return 0;
   if(s.recurring==='yearly'){
     const d=parseDay(s.renew);if(!d) return 0;
     return monthKey(d)===key?(+s.annualPrice||0):0;
@@ -377,6 +384,7 @@ function showNote(title,body,tag){
 function checkRenewalNotifs(){
  if(!canNotify()||Notification.permission!=='granted')return;
  realSubs().forEach(s=>{
+  if(s.remind===false)return;
   const d=left(s);
   if(d!==3&&d!==1)return;
   const key='notif-sent:'+s.id+':'+d+':'+s.renew;

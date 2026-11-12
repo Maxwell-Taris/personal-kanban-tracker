@@ -66,5 +66,19 @@
     "currency": "CNY",
     "priceNote": "¥158/年（折合约 ¥13.17/月）",
     "notes": "年付，每年 158 元人民币，下次续费 2027-07-31。仅作记录提醒，不自动续费、不执行付款。"
+  },
+  {
+    "id": "icloud-plus-400gb",
+    "name": "iCloud+ 存储空间 400GB",
+    "category": "云存储",
+    "pricePending": true,
+    "renew": "2027-10-17",
+    "payment": "微信公众号 会员巴士（huiyuanbus.com）",
+    "dayOfMonth": 17,
+    "recurring": "yearly",
+    "currency": "CNY",
+    "priceNote": "待补",
+    "notes": "拼车家庭会员，到期时间可能有±1–2天差异。",
+    "remind": false
   }
 ]
