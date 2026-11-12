@@ -55,7 +55,7 @@ const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(
 const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=14',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=15',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
@@ -268,13 +268,20 @@ $('#reset').onclick=async()=>{if(confirm('清空当前数据并恢复示例？')
 function addMonths(d,n){const x=new Date(d.getFullYear(),d.getMonth()+n,1);return x}
 function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1)}
 function monthLabel(key){const [y,m]=key.split('-').map(Number);return y+'年'+m+'月'}
-/** Monthly recurring: price each calendar month. Yearly: annualPrice only in renew month. No double-count of QQ monthly equivalent. */
+/** Monthly recurring: price each calendar month. Yearly: annualPrice in lastPaid month (if recorded) and in renew month, not amortized. */
+function yearlyChargeDates(s){
+  const dates=[];
+  if(s.lastPaid) dates.push(s.lastPaid);
+  if(s.renew) dates.push(s.renew);
+  return dates;
+}
 function subChargeInMonth(s, key){
   if(s.example) return 0;
   if(priceUnknown(s)) return 0;
   if(s.recurring==='yearly'){
-    const d=parseDay(s.renew);if(!d) return 0;
-    return monthKey(d)===key?(+s.annualPrice||0):0;
+    const amount=+s.annualPrice||0;
+    if(!amount) return 0;
+    return yearlyChargeDates(s).some(x=>{const d=parseDay(x);return d&&monthKey(d)===key})?amount:0;
   }
   return +s.price||0;
 }
@@ -285,8 +292,10 @@ function earliestTrendStart(){
   subs.forEach(s=>{
     if(s.example)return;
     if(s.recurring==='yearly'){
-      const d=parseDay(s.renew);if(!d)return;
-      const m=monthStart(d);if(m<=now&&m<start)start=m;
+      yearlyChargeDates(s).forEach(x=>{
+        const d=parseDay(x);if(!d)return;
+        const m=monthStart(d);if(m<=now&&m<start)start=m;
+      });
     }
   });
   return start;
@@ -350,7 +359,7 @@ function renderTrend(){
   const rightLab=`<text class="ylab" x="${W-padR+6}" y="${yCum(maxCum)+3}" text-anchor="start">累计</text><text class="ylab" x="${W-padR+6}" y="${yCum(0)+3}" text-anchor="start">¥0</text>`;
   const list=series.slice().reverse().map(m=>`<div class="tm-item"><div class="l"><span class="n">${esc(m.label)}</span><span class="w">订阅 ¥${m.subTotal.toFixed(0)} · 单笔 ¥${m.ooTotal.toFixed(0)}</span></div><div class="r"><div class="amt">¥${m.total.toFixed(0)}</div><div class="cum">累计 ¥${m.cumulative.toFixed(0)}</div></div></div>`).join('');
   el.innerHTML=`<div class="th"><span>花费趋势</span><b>累计 ¥${grand.toFixed(0)} · 月均 ¥${avg.toFixed(0)} · ${series.length} 个月</b></div>
-  <p class="tcaption">规则：月付订阅每月计入当期月费；年付（如 QQ 绿钻）只在续费月计入年费，不按月摊；单笔按发生日所在月。柱为当月合计，粉线为累计。</p>
+  <p class="tcaption">规则：月付订阅每月计入当期月费；年付在已记录的付款月和续费月计入年费，不按月摊；单笔按发生日所在月。柱为当月合计，粉线为累计。</p>
   <div class="legend"><span><i class="bar-swatch"></i>当月花费</span><span><i class="line-swatch"></i>累计花费</span></div>
   <svg class="trend-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每月花费柱状图与累计曲线">
     <defs>

@@ -81,5 +81,21 @@
     "priceNote": "¥147.8/年（折合约 ¥12.32/月）",
     "notes": "拼车家庭会员，到期时间可能有±1–2天差异。",
     "remind": false
+  },
+  {
+    "id": "microsoft-365-family",
+    "name": "Microsoft 365 家庭版（拼车，含 1TB OneDrive）",
+    "category": "工具/其他",
+    "price": 4.6917,
+    "annualPrice": 56.3,
+    "renew": "2027-02-08",
+    "payment": "淘宝店铺 Microsoft Office 365",
+    "dayOfMonth": 8,
+    "recurring": "yearly",
+    "currency": "CNY",
+    "priceNote": "¥56.3/年（实付，原价 ¥65；折合约 ¥4.69/月）",
+    "notes": "拼车家庭版，含 1TB OneDrive。上次下单 2026-02-08，实付 ¥56.3（原价 ¥65）。下次续费 2027-02-08 由下单日推算。",
+    "lastPaid": "2026-02-08",
+    "remind": false
   }
 ]
