@@ -55,7 +55,7 @@ const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(
 const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=13',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=14',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}

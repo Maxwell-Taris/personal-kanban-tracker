@@ -71,13 +71,14 @@
     "id": "icloud-plus-400gb",
     "name": "iCloud+ 存储空间 400GB",
     "category": "云存储",
-    "pricePending": true,
+    "price": 12.3167,
+    "annualPrice": 147.8,
     "renew": "2027-10-17",
     "payment": "微信公众号 会员巴士（huiyuanbus.com）",
     "dayOfMonth": 17,
     "recurring": "yearly",
     "currency": "CNY",
-    "priceNote": "待补",
+    "priceNote": "¥147.8/年（折合约 ¥12.32/月）",
     "notes": "拼车家庭会员，到期时间可能有±1–2天差异。",
     "remind": false
   }
