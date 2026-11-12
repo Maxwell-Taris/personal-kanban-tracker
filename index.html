@@ -4,11 +4,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="订阅看板">
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="styles.css?v=15"><script>document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'</script></head>
+<link rel="stylesheet" href="styles.css?v=16"><script>document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'</script></head>
 <body><div class="wrap">
 <header class="hero"><div class="top"><div><p class="eyebrow">SUBSCRIPTIONS</p><h1>订阅看板</h1></div>
 <button id="theme" class="icon" aria-label="切换主题">◐</button></div>
-<div class="stats"><div class="stat"><span>每月总花费</span><b id="total">¥0</b></div>
+<div class="stats"><div class="stat"><span>月均费用</span><b id="total">¥0</b></div>
 <div class="stat"><span>本月单笔</span><b id="oneoffMonth">¥0</b></div>
 <div class="stat"><span>订阅数</span><b id="count">0</b></div>
 <div class="stat warn tappable" role="button" tabindex="0" aria-label="查看需关注"><span>需关注</span><b id="soon">0</b></div></div></header>
@@ -22,7 +22,7 @@
 <button id="reset" class="ghost">恢复示例</button>
 <button id="enableNotif">开启通知</button>
 <button id="testNotif">测试通知</button></div>
-<p class="hint">订阅数据来自服务器上的 live.json；单笔支出（KYC、礼品卡充值等）单独记在「单笔支出」板块，不计入「每月总花费」。「花费趋势」按月汇总订阅扣费 + 单笔，并显示累计。改数据跟我说即可。<br>添加真实订阅：点「＋ 添加订阅」，填写服务名称、分类、月费、续费日期和支付方式，再点保存。点已有卡片可改或删。也可以导出 / 导入 JSON。<br>续费提醒：点「开启通知」允许系统通知，再点「测试通知」看能不能弹出。打开看板时，会检查真实订阅（不含示例）是否在 3 天或 1 天后到期。<br>📱 iPhone：用 Safari 打开 → 点底部「分享」→「添加到主屏幕」。</p>
+<p class="hint">订阅数据来自服务器上的 live.json。顶部「月均费用」是当前订阅折算的每月费用（年费已摊到月），不是已经花出去的总和。单笔支出（KYC、礼品卡充值等）记在「单笔支出」，不计入月均费用。「花费趋势」只计入真实付款：今年累计实付、当月实付。改数据跟我说即可。<br>添加真实订阅：点「＋ 添加订阅」，填写服务名称、分类、月费、续费日期和支付方式，再点保存。点已有卡片可改或删。也可以导出 / 导入 JSON。<br>续费提醒：点「开启通知」允许系统通知，再点「测试通知」看能不能弹出。打开看板时，会检查真实订阅（不含示例）是否在 3 天或 1 天后到期。<br>📱 iPhone：用 Safari 打开 → 点底部「分享」→「添加到主屏幕」。</p>
 </div>
 <dialog id="dlg"><form id="form" method="dialog"><h2 id="dlgTitle">添加订阅</h2>
 <label>服务名称<input name="name" required></label>
@@ -32,4 +32,4 @@
 <label>支付方式<input name="payment" list="pm" required><datalist id="pm"><option>支付宝</option><option>微信支付</option><option>苹果订阅</option><option>信用卡</option></datalist></label>
 <div class="row"><button type="button" id="del" class="danger">删除</button><span></span><button value="cancel" formnovalidate>取消</button><button id="save" class="primary" value="ok">保存</button></div>
 </form></dialog>
-<script src="app.js?v=15"></script></body></html>
+<script src="app.js?v=16"></script></body></html>

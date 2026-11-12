@@ -55,7 +55,7 @@ const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(
 const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=15',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=16',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
@@ -268,12 +268,17 @@ $('#reset').onclick=async()=>{if(confirm('清空当前数据并恢复示例？')
 function addMonths(d,n){const x=new Date(d.getFullYear(),d.getMonth()+n,1);return x}
 function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1)}
 function monthLabel(key){const [y,m]=key.split('-').map(Number);return y+'年'+m+'月'}
-/** Monthly recurring: price each calendar month. Yearly: annualPrice in lastPaid month (if recorded) and in renew month, not amortized. */
+/** Actual payments only. Yearly: annualPrice in lastPaid and renew months, not amortized. Monthly: from known start month; if unknown, from the board's default month (current month)—never backfill earlier months. */
 function yearlyChargeDates(s){
   const dates=[];
   if(s.lastPaid) dates.push(s.lastPaid);
   if(s.renew) dates.push(s.renew);
   return dates;
+}
+function defaultChargeStart(){return monthStart(today())}
+function knownStartMonth(s){
+  const d=parseDay(s.startedOn||s.start||s.firstPaid);
+  return d?monthStart(d):null;
 }
 function subChargeInMonth(s, key){
   if(s.example) return 0;
@@ -283,6 +288,8 @@ function subChargeInMonth(s, key){
     if(!amount) return 0;
     return yearlyChargeDates(s).some(x=>{const d=parseDay(x);return d&&monthKey(d)===key})?amount:0;
   }
+  const start=knownStartMonth(s)||defaultChargeStart();
+  if(key<monthKey(start)) return 0;
   return +s.price||0;
 }
 function earliestTrendStart(){
@@ -290,12 +297,15 @@ function earliestTrendStart(){
   let start=now;
   oneoffs.forEach(o=>{const d=parseDay(o.date);if(d){const m=monthStart(d);if(m<start)start=m}});
   subs.forEach(s=>{
-    if(s.example)return;
+    if(s.example||priceUnknown(s))return;
     if(s.recurring==='yearly'){
       yearlyChargeDates(s).forEach(x=>{
         const d=parseDay(x);if(!d)return;
         const m=monthStart(d);if(m<=now&&m<start)start=m;
       });
+    }else{
+      const m=knownStartMonth(s);
+      if(m&&m<=now&&m<start)start=m;
     }
   });
   return start;
@@ -330,7 +340,9 @@ function renderTrend(){
     return;
   }
   const grand=series[series.length-1].cumulative;
-  const avg=grand/series.length;
+  const yNow=today().getFullYear();
+  const ytd=series.filter(m=>m.key.startsWith(yNow+'-')).reduce((a,m)=>a+m.total,0);
+  const thisMonth=series.find(m=>m.key===monthKey(today()))||{total:0};
   const maxBar=Math.max(...series.map(m=>m.total),1);
   const maxCum=Math.max(...series.map(m=>m.cumulative),1);
   const W=640,H=220,padL=44,padR=48,padT=18,padB=36;
@@ -352,16 +364,17 @@ function renderTrend(){
     const h=Math.max(2, padT+plotH-y);
     const short=String(m.key).slice(5).replace(/^0/,'')+'月';
     const val=m.total>0?`<text class="val" x="${x+barW/2}" y="${y-4}" text-anchor="middle">¥${Math.round(m.total)}</text>`:'';
-    return `<rect class="bar" x="${x}" y="${y}" width="${barW}" height="${h}" rx="6"><title>${esc(m.label)}：订阅 ¥${m.subTotal.toFixed(0)} + 单笔 ¥${m.ooTotal.toFixed(0)} = ¥${m.total.toFixed(0)}；累计 ¥${m.cumulative.toFixed(0)}</title></rect>${val}<text class="tick" x="${x+barW/2}" y="${H-14}" text-anchor="middle">${esc(n>6?short:m.label)}</text>`;
+    return `<rect class="bar" x="${x}" y="${y}" width="${barW}" height="${h}" rx="6"><title>${esc(m.label)}：订阅实付 ¥${m.subTotal.toFixed(0)} + 单笔 ¥${m.ooTotal.toFixed(0)} = 当月实付 ¥${m.total.toFixed(0)}；累计实付 ¥${m.cumulative.toFixed(0)}</title></rect>${val}<text class="tick" x="${x+barW/2}" y="${H-14}" text-anchor="middle">${esc(n>6?short:m.label)}</text>`;
   }).join('');
   const pts=series.map((m,i)=>`${xAt(i)},${yCum(m.cumulative)}`).join(' ');
-  const dots=series.map((m,i)=>`<circle class="cum-dot" cx="${xAt(i)}" cy="${yCum(m.cumulative)}" r="4"><title>累计 ${esc(m.label)}：¥${m.cumulative.toFixed(0)}</title></circle>`).join('');
-  const rightLab=`<text class="ylab" x="${W-padR+6}" y="${yCum(maxCum)+3}" text-anchor="start">累计</text><text class="ylab" x="${W-padR+6}" y="${yCum(0)+3}" text-anchor="start">¥0</text>`;
-  const list=series.slice().reverse().map(m=>`<div class="tm-item"><div class="l"><span class="n">${esc(m.label)}</span><span class="w">订阅 ¥${m.subTotal.toFixed(0)} · 单笔 ¥${m.ooTotal.toFixed(0)}</span></div><div class="r"><div class="amt">¥${m.total.toFixed(0)}</div><div class="cum">累计 ¥${m.cumulative.toFixed(0)}</div></div></div>`).join('');
-  el.innerHTML=`<div class="th"><span>花费趋势</span><b>累计 ¥${grand.toFixed(0)} · 月均 ¥${avg.toFixed(0)} · ${series.length} 个月</b></div>
-  <p class="tcaption">规则：月付订阅每月计入当期月费；年付在已记录的付款月和续费月计入年费，不按月摊；单笔按发生日所在月。柱为当月合计，粉线为累计。</p>
-  <div class="legend"><span><i class="bar-swatch"></i>当月花费</span><span><i class="line-swatch"></i>累计花费</span></div>
-  <svg class="trend-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每月花费柱状图与累计曲线">
+  const dots=series.map((m,i)=>`<circle class="cum-dot" cx="${xAt(i)}" cy="${yCum(m.cumulative)}" r="4"><title>累计实付 ${esc(m.label)}：¥${m.cumulative.toFixed(0)}</title></circle>`).join('');
+  const rightLab=`<text class="ylab" x="${W-padR+6}" y="${yCum(maxCum)+3}" text-anchor="start">累计实付</text><text class="ylab" x="${W-padR+6}" y="${yCum(0)+3}" text-anchor="start">¥0</text>`;
+  const curKey=monthKey(today());
+  const list=series.filter(m=>m.total>0||m.key===curKey).slice().reverse().map(m=>`<div class="tm-item"><div class="l"><span class="n">${esc(m.label)}</span><span class="w">订阅实付 ¥${m.subTotal.toFixed(0)} · 单笔 ¥${m.ooTotal.toFixed(0)}</span></div><div class="r"><div class="amt">当月 ¥${m.total.toFixed(0)}</div><div class="cum">累计实付 ¥${m.cumulative.toFixed(0)}</div></div></div>`).join('');
+  el.innerHTML=`<div class="th"><span>花费趋势</span><b>今年累计实付 ¥${ytd.toFixed(0)} · 当月实付 ¥${thisMonth.total.toFixed(0)}</b></div>
+  <p class="tcaption">只计入真实发生的付款：月付从已知开通月份起算（未记录开通日的不回溯，只从本月起算）；年付只在实际付款月计入，不按月摊；单笔按发生月计入。柱是当月实付，粉线是累计实付。顶部「月均费用」是当前订阅折算的每月费用，不是累计实付。</p>
+  <div class="legend"><span><i class="bar-swatch"></i>当月实付</span><span><i class="line-swatch"></i>累计实付</span></div>
+  <svg class="trend-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每月实付柱状图与累计实付曲线">
     <defs>
       <linearGradient id="trendBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#6366f1"/></linearGradient>
       <linearGradient id="trendBarGradDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient>
