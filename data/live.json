@@ -97,5 +97,19 @@
     "notes": "拼车家庭版，含 1TB OneDrive。上次下单 2026-02-08，实付 ¥56.3（原价 ¥65）。下次续费 2027-02-08 由下单日推算。",
     "lastPaid": "2026-02-08",
     "remind": false
+  },
+  {
+    "id": "glados",
+    "name": "GLaDOS",
+    "category": "网络",
+    "price": 30,
+    "renew": "2026-12-05",
+    "payment": "GLaDOS 官网登录续费（glados.network）",
+    "dayOfMonth": 5,
+    "recurring": "monthly",
+    "currency": "CNY",
+    "priceNote": "约 ¥30/月（估计）",
+    "notes": "VPN/网络加速。月费约 ¥30（估计金额，用户称大概 30 左右）。下次续费 2026-12-05 由 2026-11-14 到期提醒邮件所写剩余 21 天推算。",
+    "remind": false
   }
 ]
