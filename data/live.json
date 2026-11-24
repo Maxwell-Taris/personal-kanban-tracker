@@ -29,13 +29,16 @@
     "id": "claude-pro",
     "name": "Claude Pro",
     "category": "AI",
-    "pricePending": true,
-    "priceNote": "待补",
+    "priceNote": "本次 ¥320（2026-11-19 新购）；下个月估计还要续费（预计，下次金额与精确日期未确认）",
     "payment": "支付方式未记录",
-    "recurring": "monthly",
-    "notes": "用户口述为 Cloud Pro，看板原记录为 Claude Pro，名称未改。2026-11-19 新购账号，用于替换用户所称上周被封的旧账号。新账号金额、有效期、自动续费和支付方式未提供，不推算、不计入花费。",
+    "recurring": "yearly",
+    "notes": "用户口述为 Cloud Pro，看板原记录为 Claude Pro，名称未改。2026-11-19 新购账号，用于替换用户所称上周被封的旧账号；本次购买实付 320 元。用户预计下个月还需续费；精确续费日和是否自动扣费未确认，不按 12-19 记账、不加提醒。下次金额若同为 320 仅属预计，未计入后续实付。支付方式未记录。",
     "startedOn": "2026-11-19",
-    "remind": false
+    "remind": false,
+    "price": 320,
+    "annualPrice": 320,
+    "currency": "CNY",
+    "lastPaid": "2026-11-19"
   },
   {
     "id": "claude-pro-old",
@@ -44,15 +47,17 @@
     "price": 185,
     "payment": "不能预付：到期自动变回免费版，事后再去找对方付款",
     "dayOfMonth": 9,
-    "recurring": "monthly",
+    "recurring": "yearly",
     "currency": "红品号儿",
-    "notes": "用户口述为 Cloud Pro，看板原记录为 Claude Pro，名称未改。用户报旧账号上周被封，并于 2026-11-19 另购新号；确切封禁/结束日未知，故不记结束日。已知实付为 2026-11-09 晚续费 185 红品号儿。原计划下次续费日 2026-12-09 不再适用、不计提醒；不推定该笔续费因封禁必然未发生。更早开通日期未知，花费趋势从这笔已知续费月起计，不回溯。因确切结束日未知，未设结束日。",
+    "notes": "用户口述为 Cloud Pro，看板原记录为 Claude Pro，名称未改。用户报旧账号上周被封，并于 2026-11-19 另购新号；确切封禁/结束日未知，故不记结束日。已知实付为 2026-11-09 晚续费 185 红品号儿。原计划下次续费日 2026-12-09 不再适用、不计提醒；不推定该笔续费因封禁必然未发生。原为包月。更早开通日期未知，花费趋势只计入这笔已知实付，不回溯，也不向后续月份顺延。",
     "paymentRule": "postpaid",
     "lastPaid": "2026-11-09",
     "startedOn": "2026-11-09",
     "status": "banned",
     "remind": false,
-    "plannedRenew": "2026-12-09"
+    "plannedRenew": "2026-12-09",
+    "annualPrice": 185,
+    "priceNote": "185 红品号儿（2026-11-09 续费）"
   },
   {
     "id": "us-residential-ip",
