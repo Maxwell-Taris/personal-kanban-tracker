@@ -2,7 +2,9 @@ const K='subs',$=s=>document.querySelector(s);let subs=[],oneoffs=[],filter='全
 const day=864e5,CATS=['AI','视频会员','云存储','工具/其他'];
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 const rel=v=>{if(/^[+-]\d+$/.test(v)){const d=new Date(today().getTime()+(+v)*day);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}return v};
-const left=s=>Math.round((new Date(s.renew+'T00:00:00')-today())/day);
+const parseDay=s=>{if(s==null||s==='')return null;const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
+const isEnded=s=>!!(s.endedOn||s.status==='ended'||s.status==='banned'||s.status==='closed');
+const left=s=>{const d=parseDay(s.renew);return d?Math.round((d-today())/day):null};
 const save=()=>localStorage.setItem(K,JSON.stringify(subs));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -23,8 +25,8 @@ function moneyShort(s){
  if(s.priceNote && String(s.currency||'').toUpperCase()==='USD') return '$'+(+s.price);
  return currencySym(s)+(+s.price);
 }
-function attentionItems(){return subs.filter(s=>s.remind!==false&&left(s)<=7).sort((a,b)=>left(a)-left(b))}
-function attentionWhy(s){const d=left(s);return d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后到期 · ${s.renew}`}
+function attentionItems(){return subs.filter(s=>!isEnded(s)&&s.remind!==false&&left(s)!=null&&left(s)<=7).sort((a,b)=>left(a)-left(b))}
+function attentionWhy(s){if(isEnded(s))return s.status==='banned'?(s.endedOn?`已于 ${s.endedOn} 封禁`:'已封禁'):(s.endedOn?`已于 ${s.endedOn} 结束`:'已结束');const d=left(s);if(d==null)return '续费日待补';return d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后到期 · ${s.renew}`}
 function hideSoonPop(){const p=$('#soonPop');if(p)p.remove()}
 function showSoonPop(anchor){
  hideSoonPop();hideCalPop();
@@ -52,10 +54,9 @@ function showSoonPop(anchor){
 }
 const ym=d=>d.getFullYear()+'年'+(d.getMonth()+1)+'月';
 const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())};
-const parseDay=s=>{const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=17',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=18',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
@@ -107,23 +108,24 @@ function render(){ hideCalPop();
  $('#filters').innerHTML=cats.map(c=>`<button class="${c===filter?'on':''}" data-c="${c}">${c}</button>`).join('');
  const extra=[...new Set([...CATS,...subs.map(s=>s.category)])];
  $('#cats').innerHTML=extra.map(c=>`<option>${esc(c)}</option>`).join('');
- $('#total').textContent='¥'+subs.reduce((a,s)=>a+monthlyAmount(s),0).toFixed(0);
+ $('#total').textContent='¥'+subs.filter(s=>!isEnded(s)).reduce((a,s)=>a+monthlyAmount(s),0).toFixed(0);
  const om=$('#oneoffMonth');
  if(om) om.textContent='¥'+oneoffMonthTotal(today()).toFixed(0);
- $('#count').textContent=subs.length;
- const soonN=subs.filter(s=>s.remind!==false&&left(s)<=7).length;$('#soon').textContent=soonN;
+ $('#count').textContent=subs.filter(s=>!isEnded(s)).length;
+ const soonN=subs.filter(s=>!isEnded(s)&&s.remind!==false&&left(s)!=null&&left(s)<=7).length;$('#soon').textContent=soonN;
  const soonEl=document.querySelector('.stat.warn');
  if(soonEl){soonEl.classList.add('tappable');soonEl.setAttribute('role','button');soonEl.setAttribute('tabindex','0');soonEl.setAttribute('aria-label',soonN?'查看需关注的 '+soonN+' 项':'查看需关注（暂无）');}
  renderUpcoming();
  renderOneoffs();
  renderTrend();
  const shown=subs.filter(s=>filter==='全部'||s.category===filter),groups={};
- shown.sort((a,b)=>left(a)-left(b)).forEach(s=>(groups[s.category]??=[]).push(s));
- $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.reduce((a,s)=>a+monthlyAmount(s),0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
+ shown.sort((a,b)=>{const ae=isEnded(a),be=isEnded(b);if(ae!==be)return ae?1:-1;const da=left(a),db=left(b);if(da==null&&db==null)return 0;if(da==null)return 1;if(db==null)return -1;return da-db}).forEach(s=>(groups[s.category]??=[]).push(s));
+ $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.filter(s=>!isEnded(s)).reduce((a,s)=>a+monthlyAmount(s),0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
 }
-function card(s){const d=left(s),a=d<=7;const b=d<0?'<span class="badge b-red">已过期</span>':a?'<span class="badge b-red">即将到期</span>':'';
+function dueText(s){if(isEnded(s)){const why=s.status==='banned'?'封禁':'结束';return s.endedOn?`已于 ${s.endedOn} ${why}`:`已${why}`}const d=left(s);if(d==null)return '续费日待补';return d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后 · ${s.renew}`}
+function card(s){const d=left(s),a=!isEnded(s)&&d!=null&&d<=7;const b=isEnded(s)?`<span class="badge b-red">${s.status==='banned'?'已封禁':'已结束'}</span>`:d==null?'':d<0?'<span class="badge b-red">已过期</span>':a?'<span class="badge b-red">即将到期</span>':'';
  return `<div class="card ${a?'alert':''}" data-id="${s.id}"><div class="ch"><div class="name">${esc(s.name)}${b}${s.example?'<span class="badge b-ex">示例</span>':''}</div><div class="price">${moneyCard(s)}</div></div>
- <div class="meta"><span class="due">${d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后 · ${s.renew}`}</span><span>${esc(s.payment)}</span></div></div>`}
+ <div class="meta"><span class="due">${dueText(s)}</span><span>${esc(s.payment||'支付方式未记录')}</span></div></div>`}
 function drawMonth(y,m,start,end,byDay){
  const first=new Date(y,m,1), last=new Date(y,m+1,0);
  let cells='';
@@ -132,7 +134,7 @@ function drawMonth(y,m,start,end,byDay){
   const dt=new Date(y,m,d), key=iso(dt);
   const inWin=dt>=start && dt<=end;
   const hits=byDay[key]||[];
-  const hot=hits.some(s=>left(s)<=7);
+  const hot=hits.some(s=>left(s)!=null&&left(s)<=7);
   const cls=[inWin?'':'out', key===iso(start)?'today':'', hits.length?(hot?'hot':'has'):''].filter(Boolean).join(' ');
   cells+=`<span class="${cls}"${hits.length?` data-day="${key}" role="button" tabindex="0"`:''} title="${hits.map(s=>s.name).join('、')}">${d}</span>`;
  }
@@ -140,7 +142,7 @@ function drawMonth(y,m,start,end,byDay){
 }
 function renderUpcoming(){
  const start=today(), end=new Date(start.getTime()+30*day);
- const items=subs.filter(s=>{const d=left(s);return d>=0&&d<=30}).sort((a,b)=>left(a)-left(b));
+ const items=subs.filter(s=>{if(isEnded(s))return false;const d=left(s);return d!=null&&d>=0&&d<=30}).sort((a,b)=>left(a)-left(b));
  const byDay={};items.forEach(s=>(byDay[s.renew]??=[]).push(s));
  const sum=items.reduce((a,s)=>a+monthlyAmount(s),0);
  let months='', y=start.getFullYear(), m=start.getMonth();
@@ -290,6 +292,8 @@ function subChargeInMonth(s, key){
   }
   const start=knownStartMonth(s)||defaultChargeStart();
   if(key<monthKey(start)) return 0;
+  const end=parseDay(s.endedOn);
+  if(end&&key>monthKey(monthStart(end))) return 0;
   return +s.price||0;
 }
 function earliestTrendStart(){
@@ -406,8 +410,9 @@ function showNote(title,body,tag){
 function checkRenewalNotifs(){
  if(!canNotify()||Notification.permission!=='granted')return;
  realSubs().forEach(s=>{
-  if(s.remind===false)return;
+  if(isEnded(s)||s.remind===false)return;
   const d=left(s);
+  if(d==null)return;
   if(d!==3&&d!==1)return;
   const key='notif-sent:'+s.id+':'+d+':'+s.renew;
   if(localStorage.getItem(key))return;

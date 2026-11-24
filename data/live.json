@@ -29,14 +29,30 @@
     "id": "claude-pro",
     "name": "Claude Pro",
     "category": "AI",
+    "pricePending": true,
+    "priceNote": "待补",
+    "payment": "支付方式未记录",
+    "recurring": "monthly",
+    "notes": "用户口述为 Cloud Pro，看板原记录为 Claude Pro，名称未改。2026-11-19 新购账号，用于替换已封禁的旧账号。新账号金额、有效期、自动续费和支付方式未提供，不推算、不计入花费。",
+    "startedOn": "2026-11-19",
+    "remind": false
+  },
+  {
+    "id": "claude-pro-old",
+    "name": "Claude Pro（旧账号）",
+    "category": "AI",
     "price": 185,
-    "renew": "2026-12-09",
     "payment": "不能预付：到期自动变回免费版，事后再去找对方付款",
     "dayOfMonth": 9,
     "recurring": "monthly",
     "currency": "红品号儿",
-    "notes": "每月 185（红品号儿）。不能提前付：到期后自动切回免费版，再去找那个人重新付款。",
-    "paymentRule": "postpaid"
+    "notes": "用户口述为 Cloud Pro，看板原记录为 Claude Pro，名称未改。旧账号上周被封，最后日期 2026-11-19。此前于 2026-11-09 晚续费 185 红品号儿；原记下一次续费日 2026-12-09，因封禁未发生。更早开通日期未知，花费趋势仅从这次已知续费月计入，不回溯。",
+    "paymentRule": "postpaid",
+    "lastPaid": "2026-11-09",
+    "startedOn": "2026-11-09",
+    "endedOn": "2026-11-19",
+    "status": "banned",
+    "remind": false
   },
   {
     "id": "us-residential-ip",
