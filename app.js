@@ -2,8 +2,8 @@ const K='subs',$=s=>document.querySelector(s);let subs=[],oneoffs=[],filter='全
 const day=864e5,CATS=['AI','视频会员','云存储','工具/其他'];
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 const rel=v=>{if(/^[+-]\d+$/.test(v)){const d=new Date(today().getTime()+(+v)*day);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}return v};
-const parseDay=s=>{if(s==null||s==='')return null;const d=new Date(String(s)+'T00:00:00');return isNaN(d)?null:d};
-const isEnded=s=>!!(s.endedOn||s.status==='ended'||s.status==='banned'||s.status==='closed');
+const parseDay=s=>Ledger.parseDay(s);
+const isEnded=s=>Ledger.isEnded(s);
 const left=s=>{const d=parseDay(s.renew);return d?Math.round((d-today())/day):null};
 const save=()=>localStorage.setItem(K,JSON.stringify(subs));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -25,7 +25,7 @@ function moneyShort(s){
  if(s.priceNote && String(s.currency||'').toUpperCase()==='USD') return '$'+(+s.price);
  return currencySym(s)+(+s.price);
 }
-function attentionItems(){return subs.filter(s=>!isEnded(s)&&s.remind!==false&&left(s)!=null&&left(s)<=7).sort((a,b)=>left(a)-left(b))}
+function attentionItems(){return subs.filter(s=>Ledger.inAttention(s,today())).sort((a,b)=>left(a)-left(b))}
 function attentionWhy(s){if(isEnded(s))return s.status==='banned'?(s.endedOn?`已于 ${s.endedOn} 封禁`:'已封禁'):(s.endedOn?`已于 ${s.endedOn} 结束`:'已结束');const d=left(s);if(d==null)return '续费日待补';return d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后到期 · ${s.renew}`}
 function hideSoonPop(){const p=$('#soonPop');if(p)p.remove()}
 function showSoonPop(anchor){
@@ -56,7 +56,7 @@ const ym=d=>d.getFullYear()+'年'+(d.getMonth()+1)+'月';
 const iso=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())};
 async function loadLive(){
  try{
-  const res=await fetch('data/live.json?v=18',{cache:'no-store',credentials:'same-origin'});
+  const res=await fetch('data/live.json?v=19',{cache:'no-store',credentials:'same-origin'});
   if(!res.ok) throw new Error('http '+res.status);
   const live=await res.json();
   if(Array.isArray(live)&&live.length){subs=live.map(s=>({...s,renew:rel(s.renew)}));save();return true}
@@ -112,7 +112,7 @@ function render(){ hideCalPop();
  const om=$('#oneoffMonth');
  if(om) om.textContent='¥'+oneoffMonthTotal(today()).toFixed(0);
  $('#count').textContent=subs.filter(s=>!isEnded(s)).length;
- const soonN=subs.filter(s=>!isEnded(s)&&s.remind!==false&&left(s)!=null&&left(s)<=7).length;$('#soon').textContent=soonN;
+ const soonN=attentionItems().length;$('#soon').textContent=soonN;
  const soonEl=document.querySelector('.stat.warn');
  if(soonEl){soonEl.classList.add('tappable');soonEl.setAttribute('role','button');soonEl.setAttribute('tabindex','0');soonEl.setAttribute('aria-label',soonN?'查看需关注的 '+soonN+' 项':'查看需关注（暂无）');}
  renderUpcoming();
@@ -122,8 +122,8 @@ function render(){ hideCalPop();
  shown.sort((a,b)=>{const ae=isEnded(a),be=isEnded(b);if(ae!==be)return ae?1:-1;const da=left(a),db=left(b);if(da==null&&db==null)return 0;if(da==null)return 1;if(db==null)return -1;return da-db}).forEach(s=>(groups[s.category]??=[]).push(s));
  $('#list').innerHTML=Object.entries(groups).map(([c,arr])=>`<h3><span>${esc(c)}</span><span>¥${arr.filter(s=>!isEnded(s)).reduce((a,s)=>a+monthlyAmount(s),0).toFixed(0)}/月</span></h3><div class="grid">${arr.map(card).join('')}</div>`).join('')||'<p class="hint">还没有订阅，点「添加订阅」开始。</p>';
 }
-function dueText(s){if(isEnded(s)){const why=s.status==='banned'?'封禁':'结束';return s.endedOn?`已于 ${s.endedOn} ${why}`:`已${why}`}const d=left(s);if(d==null)return '续费日待补';return d<0?`已过期 ${-d} 天`:d===0?'今天到期':`${d} 天后 · ${s.renew}`}
-function card(s){const d=left(s),a=!isEnded(s)&&d!=null&&d<=7;const b=isEnded(s)?`<span class="badge b-red">${s.status==='banned'?'已封禁':'已结束'}</span>`:d==null?'':d<0?'<span class="badge b-red">已过期</span>':a?'<span class="badge b-red">即将到期</span>':'';
+function dueText(s){if(isEnded(s)){const why=s.status==='banned'?'封禁':'结束';return s.endedOn?`已于 ${s.endedOn} ${why}`:`已${why}`}return Ledger.renewWhen(s,left(s))}
+function card(s){const d=left(s),est=!isEnded(s)&&Ledger.isRenewEstimated(s),a=!isEnded(s)&&!est&&d!=null&&d<=7;const b=isEnded(s)?`<span class="badge b-red">${s.status==='banned'?'已封禁':'已结束'}</span>`:est?'<span class="badge b-est">预计</span>':d==null?'':d<0?'<span class="badge b-red">已过期</span>':a?'<span class="badge b-red">即将到期</span>':'';
  return `<div class="card ${a?'alert':''}" data-id="${s.id}"><div class="ch"><div class="name">${esc(s.name)}${b}${s.example?'<span class="badge b-ex">示例</span>':''}</div><div class="price">${moneyCard(s)}</div></div>
  <div class="meta"><span class="due">${dueText(s)}</span><span>${esc(s.payment||'支付方式未记录')}</span></div></div>`}
 function drawMonth(y,m,start,end,byDay){
@@ -134,7 +134,7 @@ function drawMonth(y,m,start,end,byDay){
   const dt=new Date(y,m,d), key=iso(dt);
   const inWin=dt>=start && dt<=end;
   const hits=byDay[key]||[];
-  const hot=hits.some(s=>left(s)!=null&&left(s)<=7);
+  const hot=hits.some(s=>!Ledger.isRenewEstimated(s)&&left(s)!=null&&left(s)<=7);
   const cls=[inWin?'':'out', key===iso(start)?'today':'', hits.length?(hot?'hot':'has'):''].filter(Boolean).join(' ');
   cells+=`<span class="${cls}"${hits.length?` data-day="${key}" role="button" tabindex="0"`:''} title="${hits.map(s=>s.name).join('、')}">${d}</span>`;
  }
@@ -142,17 +142,21 @@ function drawMonth(y,m,start,end,byDay){
 }
 function renderUpcoming(){
  const start=today(), end=new Date(start.getTime()+30*day);
- const items=subs.filter(s=>{if(isEnded(s))return false;const d=left(s);return d!=null&&d>=0&&d<=30}).sort((a,b)=>left(a)-left(b));
+ const items=subs.filter(s=>Ledger.inUpcoming(s,today())).sort((a,b)=>left(a)-left(b));
  const byDay={};items.forEach(s=>(byDay[s.renew]??=[]).push(s));
  const sum=items.reduce((a,s)=>a+monthlyAmount(s),0);
+ const estItems=items.filter(s=>Ledger.isRenewEstimated(s));
+ const estSum=estItems.reduce((a,s)=>a+monthlyAmount(s),0);
+ const head=estItems.length?`${items.length} 笔 · ¥${sum.toFixed(0)}（含预计 ¥${estSum.toFixed(0)}）`:`${items.length} 笔 · ¥${sum.toFixed(0)}`;
  let months='', y=start.getFullYear(), m=start.getMonth();
  while(new Date(y,m,1)<=end){months+=drawMonth(y,m,start,end,byDay);m++;if(m>11){m=0;y++}}
  const list=items.length?items.map(s=>{
-  const d=left(s), a=d<=7;
-  const when=d===0?'今天到期':`${d} 天后 · ${s.renew}`;
-  return `<div class="up-item ${a?'alert':''}" data-id="${s.id}"><div class="l"><span class="n">${esc(s.name)}</span><span class="w">${when} · ${esc(s.payment)}</span></div><b>${moneyShort(s)}</b></div>`;
+  const d=left(s), est=Ledger.isRenewEstimated(s), a=!est&&d<=7;
+  const when=Ledger.renewWhen(s,d);
+  const badge=est?'<span class="badge b-est">预计</span>':'';
+  return `<div class="up-item ${a?'alert':''}" data-id="${s.id}"><div class="l"><span class="n">${esc(s.name)}${badge}</span><span class="w">${esc(when)} · ${esc(s.payment)}</span></div><b>${moneyShort(s)}</b></div>`;
  }).join(''):'<p class="up-empty">未来 30 天没有续费。</p>';
- const upHtml=`<div class="uh"><span>未来 30 天续费</span><b>${items.length} 笔 · ¥${sum.toFixed(0)}</b></div><div class="cals">${months}</div><div class="up-list">${list}</div>`;
+ const upHtml=`<div class="uh"><span>未来 30 天续费</span><b>${head}</b></div><div class="cals">${months}</div><div class="up-list">${list}</div>`;
  $('#upcoming').innerHTML=upHtml;bindCalDays();
 }
 function renderOneoffs(){
@@ -222,7 +226,7 @@ function showCalPop(el){
  hideCalPop();hideSoonPop();
  const pop=document.createElement('div');
  pop.id='calPop';pop.className='cal-pop';pop.setAttribute('role','dialog');
- pop.innerHTML='<p>'+esc(key)+' 的续费</p>'+hits.map(s=>'<div class="cal-hit"><div class="n">'+esc(s.name)+'</div><div class="d">'+esc(priceText(s))+' · 续费日 '+esc(s.renew)+'</div></div>').join('');
+ pop.innerHTML='<p>'+esc(key)+' 的续费</p>'+hits.map(s=>'<div class="cal-hit"><div class="n">'+esc(s.name)+(Ledger.isRenewEstimated(s)?'<span class="badge b-est">预计</span>':'')+'</div><div class="d">'+esc(priceText(s))+' · 续费日 '+esc(s.renew)+(Ledger.isRenewEstimated(s)?'（预计）':'')+'</div></div>').join('');
  document.body.appendChild(pop);
  const r=el.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
  let left=r.left+r.width/2-pw/2;
@@ -267,78 +271,10 @@ $('#import').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].t
 $('#reset').onclick=async()=>{if(confirm('清空当前数据并恢复示例？')){await seed();await loadOneoffs();render()}};
 
 
-function addMonths(d,n){const x=new Date(d.getFullYear(),d.getMonth()+n,1);return x}
-function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1)}
-function monthLabel(key){const [y,m]=key.split('-').map(Number);return y+'年'+m+'月'}
-/** Actual payments only. Yearly: annualPrice in lastPaid and renew months, not amortized. Monthly: from known start month; if unknown, from the board's default month (current month)—never backfill earlier months. */
-function yearlyChargeDates(s){
-  const dates=[];
-  if(s.lastPaid) dates.push(s.lastPaid);
-  if(s.renew) dates.push(s.renew);
-  return dates;
-}
-function defaultChargeStart(){return monthStart(today())}
-function knownStartMonth(s){
-  const d=parseDay(s.startedOn||s.start||s.firstPaid);
-  return d?monthStart(d):null;
-}
-function subChargeInMonth(s, key){
-  if(s.example) return 0;
-  if(priceUnknown(s)) return 0;
-  if(s.recurring==='yearly'){
-    const amount=+s.annualPrice||0;
-    if(!amount) return 0;
-    return yearlyChargeDates(s).some(x=>{const d=parseDay(x);return d&&monthKey(d)===key})?amount:0;
-  }
-  const start=knownStartMonth(s)||defaultChargeStart();
-  if(key<monthKey(start)) return 0;
-  const end=parseDay(s.endedOn);
-  if(end&&key>monthKey(monthStart(end))) return 0;
-  return +s.price||0;
-}
-function earliestTrendStart(){
-  const now=monthStart(today());
-  let start=now;
-  oneoffs.forEach(o=>{const d=parseDay(o.date);if(d){const m=monthStart(d);if(m<start)start=m}});
-  subs.forEach(s=>{
-    if(s.example||priceUnknown(s))return;
-    if(s.recurring==='yearly'){
-      yearlyChargeDates(s).forEach(x=>{
-        const d=parseDay(x);if(!d)return;
-        const m=monthStart(d);if(m<=now&&m<start)start=m;
-      });
-    }else{
-      const m=knownStartMonth(s);
-      if(m&&m<=now&&m<start)start=m;
-    }
-  });
-  return start;
-}
-function buildSpendSeries(){
-  const now=monthStart(today());
-  let start=earliestTrendStart();
-  const minStart=addMonths(now,-23);
-  if(start<minStart) start=minStart;
-  const months=[];
-  for(let cur=new Date(start);cur<=now;cur=addMonths(cur,1)){
-    const key=monthKey(cur);
-    let subTotal=0;
-    subs.forEach(s=>{subTotal+=subChargeInMonth(s,key)});
-    const ooTotal=oneoffs.reduce((a,o)=>{
-      const d=parseDay(o.date);if(!d)return a;
-      return monthKey(d)===key?a+(+o.amount||0):a;
-    },0);
-    const total=subTotal+ooTotal;
-    months.push({key,label:monthLabel(key),subTotal,ooTotal,total});
-  }
-  let cum=0;
-  months.forEach(m=>{cum+=m.total;m.cumulative=cum});
-  return months;
-}
 function renderTrend(){
   const el=$('#trend');
   if(!el) return;
-  const series=buildSpendSeries();
+  const series=Ledger.spendSeries(subs,oneoffs,today());
   if(!series.length){
     el.innerHTML=`<div class="th"><span>花费趋势</span><b>暂无数据</b></div><p class="empty">有订阅或单笔支出后，这里会显示每月花费与累计。</p>`;
     return;
@@ -376,7 +312,7 @@ function renderTrend(){
   const curKey=monthKey(today());
   const list=series.filter(m=>m.total>0||m.key===curKey).slice().reverse().map(m=>`<div class="tm-item"><div class="l"><span class="n">${esc(m.label)}</span><span class="w">订阅实付 ¥${m.subTotal.toFixed(0)} · 单笔 ¥${m.ooTotal.toFixed(0)}</span></div><div class="r"><div class="amt">当月 ¥${m.total.toFixed(0)}</div><div class="cum">累计实付 ¥${m.cumulative.toFixed(0)}</div></div></div>`).join('');
   el.innerHTML=`<div class="th"><span>花费趋势</span><b>今年累计实付 ¥${ytd.toFixed(0)} · 当月实付 ¥${thisMonth.total.toFixed(0)}</b></div>
-  <p class="tcaption">只计入真实发生的付款：月付从已知开通月份起算（未记录开通日的不回溯，只从本月起算）；年付只在实际付款月计入，不按月摊；单笔按发生月计入。柱是当月实付，粉线是累计实付。顶部「月均费用」是当前订阅折算的每月费用，不是累计实付。</p>
+  <p class="tcaption">只计入真实发生的付款：月付从已知开通月份起算（未记录开通日的不回溯，只从本月起算）；年付只在实际付款月计入，不按月摊；单笔按发生月计入。单独记下的实付明细只按明细入账，预计续费不算已支付；已封禁且没有结束日的订阅不再向后滚动出账。柱是当月实付，粉线是累计实付。顶部「月均费用」是当前订阅折算的每月费用，不是累计实付。</p>
   <div class="legend"><span><i class="bar-swatch"></i>当月实付</span><span><i class="line-swatch"></i>累计实付</span></div>
   <svg class="trend-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每月实付柱状图与累计实付曲线">
     <defs>
@@ -410,10 +346,8 @@ function showNote(title,body,tag){
 function checkRenewalNotifs(){
  if(!canNotify()||Notification.permission!=='granted')return;
  realSubs().forEach(s=>{
-  if(isEnded(s)||s.remind===false)return;
-  const d=left(s);
+  const d=Ledger.renewalNotifyDays(s,today());
   if(d==null)return;
-  if(d!==3&&d!==1)return;
   const key='notif-sent:'+s.id+':'+d+':'+s.renew;
   if(localStorage.getItem(key))return;
   showNote(d===3?'订阅还有 3 天续费':'订阅明天续费',`${s.name} · ¥${s.price} · ${s.renew}`,key);
